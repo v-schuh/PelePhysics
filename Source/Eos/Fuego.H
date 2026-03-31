@@ -241,14 +241,24 @@ struct Fuego
     const amrex::Real R,
     const amrex::Real T,
     const amrex::Real Y[NUM_SPECIES],
-    amrex::Real WDOT[NUM_SPECIES])
+    amrex::Real WDOT[NUM_SPECIES]
+#ifdef PELE_USE_ATF
+    ,
+    amrex::Real thickening_factor = 1.0,
+    amrex::Real efficiency_function = 1.0
+#endif
+    )
   {
     amrex::Real C[NUM_SPECIES];
     CKYTCR(R, T, Y, C);
     CKWC(T, C, WDOT);
-
+    
     for (int n = 0; n < NUM_SPECIES; n++) {
+#ifdef PELE_USE_ATF  // apply ATF onto chemical source term
+      WDOT[n] *= mw(n) * (efficiency_function / thickening_factor);
+#else
       WDOT[n] *= mw(n);
+#endif
     }
   }
 

@@ -1,0 +1,5 @@
+CEXE_headers += ATFModel.H
+CEXE_sources += ATFModel.cpp
+
+VPATH_LOCATIONS += $(PELE_PHYSICS_HOME)/Source/ATFModel
+INCLUDE_LOCATIONS += $(PELE_PHYSICS_HOME)/Source/ATFModel

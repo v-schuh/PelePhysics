@@ -33,6 +33,11 @@ ReactorNull::react(
   ,
   amrex::gpuStream_t /*stream*/
 #endif
+#ifdef PELE_USE_ATF  // ATF currently only implemented for ReactorCVODE
+    ,
+    const amrex::Array4<const amrex::Real>* thickening_factors,
+    const amrex::Array4<const amrex::Real>* efficiency_functions
+#endif
 )
 {
 #ifdef MOD_REACTOR

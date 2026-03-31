@@ -252,6 +252,11 @@ ReactorCvode::initCvode(
     return (1);
   }
 
+#ifdef PELE_USE_ATF  // initialize thickenine factor and efficiency function in CVODEUserData
+  a_udata->thickening_factor = new amrex::Real; 
+  a_udata->efficiency_function = new amrex::Real;
+#endif
+
   // Set the pointer to user-defined data
   int flag = CVodeSetUserData(a_cvode_mem, a_udata);
   if (utils::check_flag(&flag, "CVodeSetUserData", 1) != 0) {
@@ -1281,6 +1286,11 @@ ReactorCvode::react(
   ,
   amrex::gpuStream_t stream
 #endif
+#ifdef PELE_USE_ATF
+  ,
+  const amrex::Array4<const amrex::Real>* thickening_factors,
+  const amrex::Array4<const amrex::Real>* efficiency_functions
+#endif
 )
 {
   BL_PROFILE("Pele::ReactorCvode::react()");
@@ -1413,7 +1423,11 @@ ReactorCvode::react(
           icell, i, j, k, ncells, captured_reactor_type,
           captured_clean_init_massfrac, rY_in, rYsrc_in, T_in, rEner_in,
           rEner_src_in, yvec_d, udata->rYsrc_ext, udata->rhoe_init,
-          udata->rhoesrc_ext);
+          udata->rhoesrc_ext
+#ifdef PELE_USE_ATF  
+          , thickening_factors, udata->thickening_factor, efficiency_functions, udata->efficiency_function
+#endif
+          );  
 
         // ReInit CVODE is faster
         CVodeReInit(cvode_mem, time_start, y);
@@ -1712,10 +1726,20 @@ ReactorCvode::cF_RHS(
   auto* rhoe_init = udata->rhoe_init;
   auto* rhoesrc_ext = udata->rhoesrc_ext;
   auto* rYsrc_ext = udata->rYsrc_ext;
+
+#ifdef PELE_USE_ATF  // read thickening factor and efficiency function from udata
+  amrex::Real* thickening_factor = udata->thickening_factor; 
+  amrex::Real* efficiency_function = udata->efficiency_function;
+#endif
+
   amrex::ParallelFor(ncells, [=] AMREX_GPU_DEVICE(int icell) noexcept {
     utils::fKernelSpec<Ordering>(
       icell, ncells, dt_save, reactor_type, yvec_d, ydot_d, rhoe_init,
-      rhoesrc_ext, rYsrc_ext);
+      rhoesrc_ext, rYsrc_ext, nullptr
+#ifdef PELE_USE_ATF
+      , thickening_factor, efficiency_function
+#endif
+      ); 
   });
   amrex::Gpu::Device::streamSynchronize();
   return 0;

@@ -90,6 +90,11 @@ public:
     ,
     amrex::gpuStream_t stream
 #endif
+#ifdef PELE_USE_ATF  // ATF currently only implemented for ReactorCVODE
+    ,
+    const amrex::Array4<const amrex::Real>* thickening_factors = nullptr,
+    const amrex::Array4<const amrex::Real>* efficiency_functions = nullptr
+#endif
     ) override;
 
   int react(

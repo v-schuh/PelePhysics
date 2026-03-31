@@ -51,6 +51,10 @@ struct CVODEUserData
   amrex::Real gamma;    // System Chem. jacobian coefficient
   int nbBlocks;         // GPU kernel launch parameter
   int nbThreads;        // GPU kernel launch parameter
+#ifdef PELE_USE_ATF
+  amrex::Real* thickening_factor = nullptr; // thickening factor for ATF
+  amrex::Real* efficiency_function = nullptr;
+#endif
 
 #ifdef AMREX_USE_GPU
   // Matrix data

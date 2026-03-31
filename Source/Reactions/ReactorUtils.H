@@ -175,7 +175,15 @@ box_flatten(
   amrex::Real* y_vect,
   amrex::Real* src_vect,
   amrex::Real* vect_energy,
-  amrex::Real* src_vect_energy)
+  amrex::Real* src_vect_energy
+#ifdef PELE_USE_ATF
+  ,
+  const amrex::Array4<const amrex::Real>* thickening_factors = nullptr,    // pointer to Array in PeleLMeX level data
+  amrex::Real* thickening_factor = nullptr,                                // pointer to value in CVODEUserData
+  const amrex::Array4<const amrex::Real>* efficiency_functions = nullptr,  // pointer to Array in PeleLMeX level data
+  amrex::Real* efficiency_function = nullptr                               // pointer to value in CVODEUserData
+#endif
+  ) 
 {
   amrex::Real mass_frac[NUM_SPECIES];
   amrex::Real rho = 0.0;
@@ -206,6 +214,16 @@ box_flatten(
   amrex::Real temp = temperature(i, j, k, 0);
   vect_energy[icell] = rhoE(i, j, k, 0);
   src_vect_energy[icell] = frcEExt(i, j, k, 0);
+
+#ifdef PELE_USE_ATF  // overwrite thickening factor and efficiency function in udata with value from PeleLMeX level data of the current cell
+  if(thickening_factor != nullptr && thickening_factors != nullptr){ 
+    *thickening_factor = (*thickening_factors)(i,j,k); 
+  }
+
+  if(efficiency_function != nullptr && efficiency_functions != nullptr){ 
+    *efficiency_function = (*efficiency_functions)(i,j,k); 
+  }
+#endif
 
   amrex::Real Enrg_loc = vect_energy[icell] * rho_inv;
   auto eos = pele::physics::PhysicsType::eos();
@@ -368,7 +386,13 @@ fKernelSpec(
   const amrex::Real* rhoesrc_ext,
   const amrex::Real* rYs,
   const pele::physics::eos::EosParm<pele::physics::PhysicsType::eos_type>*
-    eosparm = nullptr)
+    eosparm = nullptr
+#ifdef PELE_USE_ATF
+    ,
+  amrex::Real* thickening_factor = nullptr,
+  amrex::Real* efficiency_function = nullptr
+#endif
+  )
 {
   auto eos = pele::physics::PhysicsType::eos(eosparm);
   amrex::Real rho_pt = 0.0, rho_pt_inv = 0.0;
@@ -400,8 +424,28 @@ fKernelSpec(
   }
 #endif
 
+#ifdef PELE_USE_ATF  // pass thickening factor and efficiency function to the EOS model
+  amrex::Real thickening_factor_RTY2WDOT;
+  amrex::Real efficiency_function_RTY2WDOT;
+
+  if(thickening_factor){
+    thickening_factor_RTY2WDOT = *thickening_factor;
+  }else{
+    thickening_factor_RTY2WDOT = 1.0;
+  }
+
+  if(efficiency_function){
+    efficiency_function_RTY2WDOT = *efficiency_function;
+  }else{
+    efficiency_function_RTY2WDOT = 1.0;
+  }
+#endif
   amrex::GpuArray<amrex::Real, NUM_SPECIES> cdots_pt = {0.0};
-  eos.RTY2WDOT(rho_pt, temp_pt, massfrac.arr, cdots_pt.arr);
+  eos.RTY2WDOT(rho_pt, temp_pt, massfrac.arr, cdots_pt.arr
+#ifdef PELE_USE_ATF
+  , thickening_factor_RTY2WDOT, efficiency_function_RTY2WDOT
+#endif
+  ); 
 
   amrex::Real rhoesrc = rhoesrc_ext[icell];
   for (int n = 0; n < NUM_SPECIES; n++) {
