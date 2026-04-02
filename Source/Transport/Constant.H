@@ -96,9 +96,9 @@ struct ConstTransport
           transport(
             wtr_get_xi, wtr_get_mu, wtr_get_lam, wtr_get_Ddiag, wtr_get_chi,
             0.0, 0.0, nullptr, Ddiag, chi_mix, muloc, xiloc, lamloc, tparm
-// #ifdef PELE_USE_ATF
-//             , thickening_factor, efficiency_function
-// #endif          
+#ifdef PELE_USE_ATF
+            , thickening_factor, efficiency_function
+#endif          
           );
 
           // mu, xi and lambda are stored after D in the diffusion multifab

@@ -321,11 +321,11 @@ struct SimpleTransport
     amrex::Real& xi,
     amrex::Real& lam,
     TransParm<EosType, transport_type> const* tparm
-// #ifdef PELE_USE_ATF
-//     , 
-//     amrex::Real thickening_factor,
-//     amrex::Real efficiency_function
-// #endif
+#ifdef PELE_USE_ATF
+    , 
+    amrex::Real thickening_factor,
+    amrex::Real efficiency_function
+#endif
     )
   {
     amrex::Real trace = 1.e-15;
@@ -482,9 +482,9 @@ amrex::Real efficiency_function
           transport(
             wtr_get_xi, wtr_get_mu, wtr_get_lam, wtr_get_Ddiag, wtr_get_chi, T,
             rho, massloc, Ddiag, chi_mix, muloc, xiloc, lamloc, tparm
-// #ifdef PELE_USE_ATF
-//             , thickening_factor, efficiency_function
-// #endif
+#ifdef PELE_USE_ATF
+            , thickening_factor, efficiency_function
+#endif
           );
 
           //   mu, xi and lambda are stored after D in the diffusion multifab
