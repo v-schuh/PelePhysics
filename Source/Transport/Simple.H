@@ -145,9 +145,9 @@ struct BinaryDiff
     TransParm<EOSType, SimpleTransport> const* tparm
 #ifdef PELE_USE_ATF  
     ,
-    amrex::Real thickening_factor = 1.0,
-    amrex::Real efficiency_function = 1.0
- #endif   
+    amrex::Real thickening_factor,
+    amrex::Real efficiency_function
+#endif   
     )
   {
     const amrex::Real scale = Constants::PATM / (Constants::RU * Tloc);
@@ -173,11 +173,12 @@ struct BinaryDiff
         term1 += Yloc[j];
       }
       
-#ifdef PELE_USE_ATF  // thickening of the diffusion coefficient
-      Ddiag[i] = efficiency_function * thickening_factor * tparm->wt[i] * term1 / Ddiag[i] * scale; // diffusion thickening
-#else
+// #ifdef PELE_USE_ATF  // thickening of the diffusion coefficient
+//       Ddiag[i] = efficiency_function * thickening_factor * tparm->wt[i] * term1 / Ddiag[i] * scale; // diffusion thickening
+// #else
+//       Ddiag[i] = tparm->wt[i] * term1 / Ddiag[i] * scale; 
+// #endif
       Ddiag[i] = tparm->wt[i] * term1 / Ddiag[i] * scale; 
-#endif
     }
   }
 };
@@ -197,8 +198,8 @@ struct BinaryDiff<eos::SRK>
     TransParm<eos::SRK, SimpleTransport> const* tparm
 #ifdef PELE_USE_ATF
     ,
-    amrex::Real thickening_factor = 1.0,
-    amrex::Real efficiency_function = 1.0
+    amrex::Real thickening_factor,
+    amrex::Real efficiency_function
 #endif
     )
   {
@@ -231,11 +232,13 @@ struct BinaryDiff<eos::SRK>
       for (int j = 0; j < i; ++j) {
         term1 += Yloc[j];
       }
-#ifdef PELE_USE_ATF  // thickening of the diffusion coefficient
-      Ddiag[i] = efficiency_function * thickening_factor * tparm->wt[i] * term1 / Ddiag[i]; // diffusion thickening
-#else
+
+// #ifdef PELE_USE_ATF  // thickening of the diffusion coefficient
+//       Ddiag[i] = efficiency_function * thickening_factor * tparm->wt[i] * term1 / Ddiag[i]; // diffusion thickening
+// #else
+//       Ddiag[i] = tparm->wt[i] * term1 / Ddiag[i]; 
+// #endif
       Ddiag[i] = tparm->wt[i] * term1 / Ddiag[i]; 
-#endif
     }
   }
 };
@@ -318,11 +321,11 @@ struct SimpleTransport
     amrex::Real& xi,
     amrex::Real& lam,
     TransParm<EosType, transport_type> const* tparm
-#ifdef PELE_USE_ATF
-    , 
-    amrex::Real thickening_factor = 1.0,
-    amrex::Real efficiency_function = 1.0
-#endif
+// #ifdef PELE_USE_ATF
+//     , 
+//     amrex::Real thickening_factor,
+//     amrex::Real efficiency_function
+// #endif
     )
   {
     amrex::Real trace = 1.e-15;
@@ -396,16 +399,17 @@ struct SimpleTransport
       for (int i = 0; i < NUM_SPECIES; ++i) {
         lam += Xloc[i] * std::sqrt(std::sqrt(lamloc[i]));
       }
-#ifdef PELE_USE_ATF  // thickening of the thermal conductivity
-      lam = efficiency_function * thickening_factor * lam * lam * lam * lam; 
-#else
+// #ifdef PELE_USE_ATF  // thickening of the thermal conductivity
+//       lam = efficiency_function * thickening_factor * lam * lam * lam * lam; 
+// #else
+//       lam = lam * lam * lam * lam;
+// #endif
       lam = lam * lam * lam * lam;
-#endif
     }
     // Add nonideal corrections if necessary
     NonIdealChungCorrections<EosType>()(
       wtr_get_mu, wtr_get_lam, Tloc, Xloc, rholoc, wbar, mu, lam, tparm);
-
+      
     if (wtr_get_Ddiag) {
       BinaryDiff<EosType>()(Xloc, Yloc, logT, rholoc, Tloc, Ddiag, tparm
 #ifdef PELE_USE_ATF
@@ -444,7 +448,13 @@ struct SimpleTransport
     amrex::Array4<amrex::Real> const& mu_out,
     amrex::Array4<amrex::Real> const& xi_out,
     amrex::Array4<amrex::Real> const& lam_out,
-    TransParm<EosType, transport_type> const* tparm)
+    TransParm<EosType, transport_type> const* tparm
+#ifdef PELE_USE_ATF
+,
+amrex::Real thickening_factor,
+amrex::Real efficiency_function
+#endif
+    )
   {
     const auto lo = amrex::lbound(bx);
     const auto hi = amrex::ubound(bx);
@@ -471,7 +481,11 @@ struct SimpleTransport
           amrex::Real chi_mix[NUM_SPECIES] = {0.0};
           transport(
             wtr_get_xi, wtr_get_mu, wtr_get_lam, wtr_get_Ddiag, wtr_get_chi, T,
-            rho, massloc, Ddiag, chi_mix, muloc, xiloc, lamloc, tparm);
+            rho, massloc, Ddiag, chi_mix, muloc, xiloc, lamloc, tparm
+// #ifdef PELE_USE_ATF
+//             , thickening_factor, efficiency_function
+// #endif
+          );
 
           //   mu, xi and lambda are stored after D in the diffusion multifab
           for (int n = 0; n < NUM_SPECIES; ++n) {

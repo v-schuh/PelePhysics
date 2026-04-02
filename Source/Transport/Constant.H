@@ -25,7 +25,13 @@ struct ConstTransport
     amrex::Real& mu,
     amrex::Real& xi,
     amrex::Real& lam,
-    TransParm<EosType, transport_type> const* tparm)
+    TransParm<EosType, transport_type> const* tparm
+#ifdef PELE_USE_ATF  
+    ,
+    amrex::Real thickening_factor,
+    amrex::Real efficiency_function
+#endif   
+  )
   {
 
     if (wtr_get_lam) {
@@ -63,7 +69,13 @@ struct ConstTransport
     amrex::Array4<amrex::Real> const& mu_out,
     amrex::Array4<amrex::Real> const& xi_out,
     amrex::Array4<amrex::Real> const& lam_out,
-    TransParm<EosType, transport_type> const* tparm)
+    TransParm<EosType, transport_type> const* tparm
+#ifdef PELE_USE_ATF
+    ,
+    amrex::Real thickening_factor,
+    amrex::Real efficiency_function
+#endif  
+  )
   {
     const auto lo = amrex::lbound(bx);
     const auto hi = amrex::ubound(bx);
@@ -83,19 +95,35 @@ struct ConstTransport
           amrex::Real chi_mix[NUM_SPECIES] = {0.0};
           transport(
             wtr_get_xi, wtr_get_mu, wtr_get_lam, wtr_get_Ddiag, wtr_get_chi,
-            0.0, 0.0, nullptr, Ddiag, chi_mix, muloc, xiloc, lamloc, tparm);
+            0.0, 0.0, nullptr, Ddiag, chi_mix, muloc, xiloc, lamloc, tparm
+// #ifdef PELE_USE_ATF
+//             , thickening_factor, efficiency_function
+// #endif          
+          );
 
           // mu, xi and lambda are stored after D in the diffusion multifab
           for (int n = 0; n < NUM_SPECIES; ++n) {
+//#ifdef PELE_USE_ATF
+//             D_out(i, j, k, n) = thickening_factor * efficiency_function * Ddiag[n]; // diffusion thickening          
+//#else
             D_out(i, j, k, n) = Ddiag[n];
+//#endif
             if (wtr_get_chi) {
+//#ifdef PELE_USE_ATF
+//              chi_out(i, j, k, n) = thickening_factor * efficiency_function *chi_mix[n];
+//#else
               chi_out(i, j, k, n) = chi_mix[n];
+//#endif
             }
           }
 
           mu_out(i, j, k) = muloc;
           xi_out(i, j, k) = xiloc;
+//#ifdef PELE_USE_ATF
+//          lam_out(i, j, k) = thickening_factor * efficiency_function * lamloc;
+//#else
           lam_out(i, j, k) = lamloc;
+//#endif
         }
       }
     }
